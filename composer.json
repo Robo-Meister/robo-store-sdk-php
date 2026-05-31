@@ -1,0 +1,44 @@
+{
+    "name": "robo-meister/robo-store-api",
+    "description": "PHP SDK for the Robo Meister Store API.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "robo-meister",
+        "robo-store",
+        "store-api",
+        "sdk",
+        "composer"
+    ],
+    "homepage": "https://store.robo-meister.com",
+    "support": {
+        "issues": "https://github.com/Robo-Meister/robo-store-api-php/issues",
+        "source": "https://github.com/Robo-Meister/robo-store-api-php"
+    },
+    "require": {
+        "php": ">=8.2",
+        "ext-curl": "*",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0 || ^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "RoboMeister\\RoboStoreApi\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "RoboMeister\\RoboStoreApi\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
