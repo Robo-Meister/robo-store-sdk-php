@@ -49,6 +49,43 @@ final class RoboStoreApiClientTest extends TestCase
         );
     }
 
+
+    public function testPublicFreeCatalogHelpersBuildCacheRequests(): void
+    {
+        $transport = new FakeTransport(
+            new Response(200, [], '{"count":1,"packages":[{"name":"demo","version":"1.0.0"}]}'),
+            new Response(200, [], '{"count":1,"packages":[{"name":"demo","version":"1.0.1"}]}')
+        );
+        $client = new RoboStoreApiClient(new ClientOptions('https://store.example'), $transport);
+
+        $catalog = $client->publicFreeCatalog();
+        $changes = $client->publicFreeCatalogChanges(new \DateTimeImmutable('2026-06-03T00:00:00Z'));
+
+        $this->assertSame(1, $catalog['count']);
+        $this->assertSame('1.0.1', $changes['packages'][0]['version']);
+        $this->assertSame('https://store.example/packages/api/public-catalog/free', $transport->requests[0]['url']);
+        $this->assertSame(
+            'https://store.example/packages/api/public-catalog/changes?since=2026-06-03T00%3A00%3A00%2B00%3A00',
+            $transport->requests[1]['url']
+        );
+    }
+
+    public function testPublicFreeDownloadHelpersFetchAndCachePackageBytes(): void
+    {
+        $transport = new FakeTransport(new Response(200, [], 'package-bytes'));
+        $client = new RoboStoreApiClient(new ClientOptions('https://store.example'), $transport);
+        $destination = sys_get_temp_dir() . '/robo-store-api-test-' . bin2hex(random_bytes(4)) . '/demo.rappkg';
+
+        $this->assertSame('https://store.example/packages/api/public-catalog/apps/demo%20pack/1.0.0/download', $client->publicFreePackageDownloadUrl('apps', 'demo pack', '1.0.0'));
+        $this->assertSame('https://store.example/packages/api/public-catalog/demo%20pack/1.0.0/download', $client->publicFreePackageDownloadUrl('', 'demo pack', '1.0.0'));
+        $this->assertSame($destination, $client->downloadPublicFreePackageToFile('apps', 'demo pack', '1.0.0', $destination));
+        $this->assertSame('package-bytes', file_get_contents($destination));
+        $this->assertSame('application/octet-stream', $transport->requests[0]['headers']['Accept']);
+
+        unlink($destination);
+        rmdir(dirname($destination));
+    }
+
     public function testCheckoutStartUrlBuildsBrowserRedirectUrl(): void
     {
         $client = new RoboStoreApiClient(new ClientOptions('https://store.example/'));

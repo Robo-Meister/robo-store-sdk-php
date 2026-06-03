@@ -12,8 +12,12 @@ final class FakeTransport implements TransportInterface
     /** @var list<array{method: string, url: string, headers: array<string, string>, body: string|null}> */
     public array $requests = [];
 
-    public function __construct(private readonly Response $response)
+    /** @var list<Response> */
+    private array $responses;
+
+    public function __construct(Response ...$responses)
     {
+        $this->responses = $responses;
     }
 
     public function request(string $method, string $url, array $headers = [], ?string $body = null, int $timeoutSeconds = 10): Response
@@ -25,6 +29,6 @@ final class FakeTransport implements TransportInterface
             'body' => $body,
         ];
 
-        return $this->response;
+        return array_shift($this->responses) ?? new Response(500, [], '{"error":"No fake response configured."}');
     }
 }

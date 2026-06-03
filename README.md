@@ -26,6 +26,9 @@ $client = new RoboStoreApiClient(new ClientOptions(
 ));
 
 $offers = $client->offers('FLOWBEACON');
+$freeCatalog = $client->publicFreeCatalog();
+$changes = $client->publicFreeCatalogChanges(new DateTimeImmutable('yesterday'));
+$cachedPath = $client->downloadPublicFreePackageToFile('apps', 'inventory-tracker', '1.0.0', __DIR__ . '/cache/inventory-tracker.rappkg');
 
 $checkoutUrl = $client->checkoutStartUrl('FLOWBEACON_LTD', [
     'owner_type' => 'organisation',
@@ -44,6 +47,11 @@ $checkoutUrl = $client->checkoutStartUrl('FLOWBEACON_LTD', [
 | `recommendations($context = [])` | `GET /api/store/recommendations` | Fetch compatibility recommendations. |
 | `paymentProviders()` | `GET /api/store/payment-providers` | Discover enabled payment providers. |
 | `activateFree($sku, $product, $options = [])` | `POST /api/store/activate-free` | Activate a `_FREE` SKU for an owner. |
+| `publicFreeCatalog()` | `GET /packages/api/public-catalog/free` | List the latest public app/pack versions that are free to download. |
+| `publicFreeCatalogChanges($since)` | `GET /packages/api/public-catalog/changes?since=...` | List new free public app/pack versions since an ISO-8601 date for daily cache refresh jobs. |
+| `publicFreePackageDownloadUrl($channel, $name, $version)` | `GET /packages/api/public-catalog/{channel}/{name}/{version}/download` or `GET /packages/api/public-catalog/{name}/{version}/download` when channel is empty | Build a direct archive download URL. |
+| `downloadPublicFreePackage($channel, $name, $version)` | `GET /packages/api/public-catalog/{channel}/{name}/{version}/download` or no-channel route when channel is empty | Download a free public app/pack archive as bytes. |
+| `downloadPublicFreePackageToFile($channel, $name, $version, $destination)` | `GET /packages/api/public-catalog/{channel}/{name}/{version}/download` or no-channel route when channel is empty | Download a free public app/pack archive into a local cache path. |
 | `checkoutStartUrl($sku, $options = [])` | `GET /checkout/start` | Build a browser redirect URL for paid checkout. |
 
 Low-level `get()`, `post()`, and `buildUrl()` methods are also available for endpoints that do not yet have a typed helper.

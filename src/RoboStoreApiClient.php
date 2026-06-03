@@ -64,6 +64,90 @@ final class RoboStoreApiClient
         return $this->post('/api/store/activate-free', ['sku' => $sku, 'product' => $product] + $options);
     }
 
+
+    /**
+     * List the latest public app/pack versions that are free to download.
+     *
+     * @return array<string, mixed>
+     */
+    public function publicFreeCatalog(): array
+    {
+        return $this->get('/packages/api/public-catalog/free');
+    }
+
+    /**
+     * List free public app/pack versions published after an ISO-8601 date.
+     *
+     * @return array<string, mixed>
+     */
+    public function publicFreeCatalogChanges(string|\DateTimeInterface $since): array
+    {
+        if ($since instanceof \DateTimeInterface) {
+            $since = $since->format(DATE_ATOM);
+        }
+
+        return $this->get('/packages/api/public-catalog/changes', ['since' => $since]);
+    }
+
+    /**
+     * Build the direct download URL for a free public app/pack version.
+     */
+    public function publicFreePackageDownloadUrl(string $channel, string $name, string $version): string
+    {
+        $path = $channel === ''
+            ? sprintf(
+                '/packages/api/public-catalog/%s/%s/download',
+                rawurlencode($name),
+                rawurlencode($version)
+            )
+            : sprintf(
+                '/packages/api/public-catalog/%s/%s/%s/download',
+                rawurlencode($channel),
+                rawurlencode($name),
+                rawurlencode($version)
+            );
+
+        return $this->buildUrl($path);
+    }
+
+    /**
+     * Download a free public app/pack version and return its raw archive bytes.
+     */
+    public function downloadPublicFreePackage(string $channel, string $name, string $version): string
+    {
+        $response = $this->transport->request(
+            'GET',
+            $this->publicFreePackageDownloadUrl($channel, $name, $version),
+            $this->headers(['Accept' => 'application/octet-stream']),
+            null,
+            $this->options->getTimeoutSeconds()
+        );
+
+        if ($response->getStatusCode() >= 200 && $response->getStatusCode() < 300) {
+            return $response->getBody();
+        }
+
+        throw new ApiException($response->getStatusCode(), 'Store API package download failed.', []);
+    }
+
+    /**
+     * Download a free public app/pack version into a local cache file.
+     */
+    public function downloadPublicFreePackageToFile(string $channel, string $name, string $version, string $destination): string
+    {
+        $bytes = $this->downloadPublicFreePackage($channel, $name, $version);
+        $directory = dirname($destination);
+        if (!is_dir($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
+            throw new RoboStoreApiException(sprintf('Unable to create cache directory "%s".', $directory));
+        }
+
+        if (file_put_contents($destination, $bytes) === false) {
+            throw new RoboStoreApiException(sprintf('Unable to write package cache file "%s".', $destination));
+        }
+
+        return $destination;
+    }
+
     /**
      * @param array<string, scalar|null> $options
      */
