@@ -45,6 +45,9 @@ $checkoutUrl = $client->checkoutStartUrl('FLOWBEACON_LTD', [
 | `offers($product, $filters = [])` | `GET /api/store/offers` | Fetch public offers for a product. |
 | `filteredOffers($filters = [])` | `GET /api/store/offers/filter` | Fetch locally filtered offers by product/category/tags. |
 | `recommendations($context = [])` | `GET /api/store/recommendations` | Fetch compatibility recommendations. |
+| `discoverPackages($page = 1, $limit = 12)` | `GET /packages/api/discover` | Browse storefront listings with pagination (limit 1–24). |
+| `packageRelationships($packageId)` | `GET /packages/catalog/{id}/relationships` | Read public publisher-authored dependencies, companions and alternatives. |
+| `packageDetailsUrl($packageId)` | `/packages/catalog/{id}` | Build an informational browser URL without making a request. |
 | `paymentProviders()` | `GET /api/store/payment-providers` | Discover enabled payment providers. |
 | `activateFree($sku, $product, $options = [])` | `POST /api/store/activate-free` | Activate a `_FREE` SKU for an owner. |
 | `publicFreeCatalog()` | `GET /packages/api/public-catalog/free` | List the latest public app/pack versions that are free to download. |
@@ -70,3 +73,51 @@ Low-level `get()`, `post()`, and `buildUrl()` methods are also available for end
 composer install
 composer test
 ```
+
+
+## Extension discovery and Command Center integration
+
+Requires Store PRs #565 and #567 deployed. Existing `recommendations()` remains a
+compatibility call to the deprecated Store proxy. Never call that proxy from
+Connector recommendations: it can proxy back to Connector.
+
+Use a public client (no token required) to read publisher suggestions:
+
+```php
+$catalog = $client->discoverPackages(page: 1, limit: 12);
+foreach ($catalog['packages'] ?? [] as $package) {
+    // Numeric Store record ID, not an organisation ID, package name or SKU.
+    $packageId = (int) $package['id'];
+    $relations = $client->packageRelationships($packageId);
+    $detailsUrl = $client->packageDetailsUrl($packageId);
+}
+// Fetch the next page only when pagination.hasMore is true.
+```
+
+Fetch relationships on demand; do not synchronously fetch all pages and all related
+packages for each Command Center render. These helpers reuse the SDK transport,
+base URL, timeout, authorization and error handling. They do not follow arbitrary
+URLs from metadata and make no installation, checkout or activation requests.
+
+`relationships` has `required`, `recommended`, `optional` and `alternatives`
+arrays. Each item has `name`, `status` and `listing`. An unresolved dependency
+has `status: unresolved` and `listing: null`. A resolved item has
+`status: public_listing` and a listing with `title`, `summary`, `priceLabel`,
+`isFree`, `typeLabel`, `detailsUrl`. All payload fields are preserved.
+
+`isFree` and the price label describe the catalog package only. They do not prove
+that prerequisites or external usage are free, that an organisation owns a license,
+or that the current workspace can install it. Preserve unresolved requirements;
+do not interpret an empty result or 404 as an entitlement decision.
+
+Command Center's canonical `WorkspaceExpansionRecommendationReader` currently
+uses local catalogue sources and actor-bound installation evidence. This SDK PR
+does not change that behavior. A subsequent Connector adapter must reconcile exact
+package identity/version, publication, audience and canonical installed-state facts
+through that mechanism before displaying personalized suggestions. The public
+Store relationship response alone is not that proof.
+
+Release this SDK change through the normal Packagist tag process, then update
+consumers' composer.json constraints and composer.lock to the released version.
+No release tag or consumer lockfile change is included here; do not use an
+unreleased development branch in production.

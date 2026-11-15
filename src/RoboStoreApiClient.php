@@ -48,6 +48,50 @@ final class RoboStoreApiClient
     }
 
     /**
+     * Browse Store listings, including storefront price labels and relationship links.
+     * This is discovery, not installation eligibility or workspace recommendations.
+     *
+     * @return array<string, mixed>
+     */
+    public function discoverPackages(int $page = 1, int $limit = 12): array
+    {
+        if ($page < 1 || $limit < 1 || $limit > 24) {
+            throw new \InvalidArgumentException('Page must be positive and limit must be between 1 and 24.');
+        }
+
+        return $this->get('/packages/api/discover', ['page' => $page, 'limit' => $limit]);
+    }
+
+    /**
+     * Read publisher-authored relationships for a numeric Store catalog record.
+     * Missing, withdrawn and non-public source listings return the API's 404.
+     * Payload is preserved, including unresolved dependencies and future fields.
+     *
+     * @return array<string, mixed>
+     */
+    public function packageRelationships(int $packageId): array
+    {
+        $this->assertCatalogId($packageId);
+
+        return $this->get('/packages/catalog/' . $packageId . '/relationships');
+    }
+
+    /** Build an informational browser URL; does not install, activate or purchase. */
+    public function packageDetailsUrl(int $packageId): string
+    {
+        $this->assertCatalogId($packageId);
+
+        return $this->buildUrl('/packages/catalog/' . $packageId);
+    }
+
+    private function assertCatalogId(int $packageId): void
+    {
+        if ($packageId < 1) {
+            throw new \InvalidArgumentException('A positive numeric Store catalog ID is required.');
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function paymentProviders(): array
@@ -277,3 +321,4 @@ final class RoboStoreApiClient
         throw new ApiException($statusCode, $message, $payload);
     }
 }
+
